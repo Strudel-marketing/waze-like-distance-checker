@@ -11,7 +11,6 @@ def waze_distance():
         lon1 = request.args.get("lon1")
         lat2 = request.args.get("lat2")
         lon2 = request.args.get("lon2")
-        mode = request.args.get("mode", "shortest")  # shortest או fastest
 
         if not lat1 or not lon1 or not lat2 or not lon2:
             return jsonify({"error": "Missing coordinates"}), 400
@@ -21,7 +20,7 @@ def waze_distance():
 
         route = WazeRouteCalculator(origin, destination, "IL")
 
-        # כאן נקבל את כל הנתונים מה-API
+        # שליפת כל המסלולים האפשריים
         routes = route.calc_all_routes_info()  # dict: { routeName: (time, distance) }
 
         all_routes = []
@@ -35,26 +34,27 @@ def waze_distance():
         if not all_routes:
             return jsonify({"error": "No routes found"}), 404
 
+        # הקצר ביותר בק"מ
         shortest = min(all_routes, key=lambda r: r["distance_km"])
+        # המהיר ביותר בזמן
         fastest = min(all_routes, key=lambda r: r["time_minutes"])
 
-        chosen = shortest if mode == "shortest" else fastest
-
+        # בדיקת פער חשוד
         warning = None
         if abs(shortest["distance_km"] - fastest["distance_km"]) > 10:
-            warning = "Large difference between shortest and fastest routes"
+            warning = (
+                "⚠️ Significant mismatch between shortest and fastest. "
+                "Waze app may be using a different route."
+            )
 
         return jsonify({
-            "distance_km": chosen["distance_km"],   # תאימות ל-Apps Script
-            "chosen": chosen,
             "shortest": shortest,
             "fastest": fastest,
             "all_routes": all_routes,
             "routes_count": len(all_routes),
             "warning": warning,
             "source": "waze",
-            "calculated_at": datetime.utcnow().isoformat() + "Z",
-            "raw_response": routes  # 👈 החזרה גולמית מה-WazeRouteCalculator
+            "calculated_at": datetime.utcnow().isoformat() + "Z"
         })
 
     except WRCError as e:
