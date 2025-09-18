@@ -24,13 +24,29 @@ def waze_distance():
                 start = f"{lat1},{lon1}"
                 end = f"{lat2},{lon2}"
                 results = await client.calc_routes(start, end)
-                first_route = next(iter(results))
-                return first_route.distance
+        
+                all_routes = []
+                for route in results:
+                    print(f"Route: {route.name}, Distance: {route.distance:.2f} km, Time: {route.time:.1f} min")
+                    all_routes.append({
+                        "name": route.name,
+                        "distance_km": round(route.distance, 2),
+                        "time_min": round(route.time, 1)
+                    })
 
-        km = asyncio.run(get_distance())
+        # בוחר את המסלול הקצר ביותר
+        best_route = min(results, key=lambda r: r.distance)
+
+        return round(best_route.distance, 2), all_routes
+
+        km, all_routes = asyncio.run(get_distance())
         cache.set(lat1, lon1, lat2, lon2, km)
-
-        return jsonify({"distance_km": round(km, 2), "source": "waze"})
+        
+        return jsonify({
+            "distance_km": km,
+            "source": "waze",
+            "routes": all_routes
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
