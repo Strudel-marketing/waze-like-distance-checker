@@ -1,65 +1,48 @@
 from flask import Flask, request, jsonify
-from WazeRouteCalculator import WazeRouteCalculator, WRCError
+from wazeroutecalculator import WazeRouteCalculator
 import requests
+import os
 
 app = Flask(__name__)
 
-# ORS settings
-ORS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
-ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRlNmIyMmZiOGFiNTQ0NWI5YTk4MTQ2ZjY2NTlkNDE1IiwiaCI6Im11cm11cjY0In0="
+ORS_API_KEY = os.environ.get("ORS_API_KEY", "")
 
+def get_waze_distance(lat1, lon1, lat2, lon2):
+    servers = ["www.waze.com", "il.waze.com", "row.waze.com"]
+    last_error = None
+    debug = []
 
-def try_waze(lat1, lon1, lat2, lon2, region=None):
-    calculator = WazeRouteCalculator(
-        (lat1, lon1),
-        (lat2, lon2),
-        region=region
-    )
-    routes = calculator.calc_all_routes_info(real_time=True)
+    for server in servers:
+        try:
+            debug.append(f"Trying Waze server: {server}")
+            route_calc = WazeRouteCalculator(lat1, lon1, lat2, lon2, region="IL", server=server)
+            routes = route_calc.calc_all_routes_info()
+            distances = [info[0] for info in routes.values()]
+            km = min(distances) / 1000.0
+            debug.append(f"Waze success from {server}: {km} km")
+            return round(km, 2), server, debug
+        except Exception as e:
+            last_error = str(e)
+            debug.append(f"Waze failed on {server}: {e}")
+            continue
 
-    if not routes:
-        raise ValueError("No routes returned from Waze")
+    raise Exception(f"Waze failed on all servers: {last_error}\n{debug}")
 
-    best_distance = None
-    best_name = None
-    for name, info in routes.items():
-        dist_km, duration_min = info
-        if best_distance is None or dist_km < best_distance:
-            best_distance = dist_km
-            best_name = name
-
-    return {
-        "distance_km": round(best_distance, 2),
-        "route": best_name,
-        "source": f"waze{'' if not region else '_' + region}",
-        "alternatives": {
-            name: {
-                "distance_km": round(info[0], 2),
-                "duration_min": round(info[1], 1)
-            }
-            for name, info in routes.items()
-        }
-    }
-
-
-def ors_fallback(lat1, lon1, lat2, lon2):
+def get_ors_distance(lat1, lon1, lat2, lon2):
+    url = "https://api.openrouteservice.org/v2/directions/driving-car"
     body = {
         "coordinates": [[lon1, lat1], [lon2, lat2]],
         "units": "km"
     }
     headers = {"Authorization": ORS_API_KEY}
-    res = requests.post(ORS_URL, json=body, headers=headers)
+    res = requests.post(url, json=body, headers=headers)
 
-    if res.status_code != 200:
-        raise ValueError(f"ORS error: HTTP {res.status_code}")
-
-    data = res.json()
-    km = data["features"][0]["properties"]["summary"]["distance"]
-    return {
-        "distance_km": round(km, 2),
-        "source": "ors_fallback"
-    }
-
+    if res.status_code == 200:
+        data = res.json()
+        km = data["features"][0]["properties"]["summary"]["distance"]
+        return round(km, 2)
+    else:
+        raise Exception(f"ORS failed: HTTP {res.status_code}, {res.text}")
 
 @app.get("/waze-distance")
 def waze_distance():
@@ -69,20 +52,34 @@ def waze_distance():
         lat2 = float(request.args["lat2"])
         lon2 = float(request.args["lon2"])
 
-        # ניסיונות לפי סדר
-        for region in ["IL", "israel", None]:
-            try:
-                result = try_waze(lat1, lon1, lat2, lon2, region)
-                return jsonify(result)
-            except Exception as e:
-                print(f"Waze failed with region={region}: {e}")
+        debug_log = []
 
-        # fallback ל-ORS
-        return jsonify(ors_fallback(lat1, lon1, lat2, lon2))
+        try:
+            km, server, debug = get_waze_distance(lat1, lon1, lat2, lon2)
+            debug_log.extend(debug)
+            return jsonify({
+                "distance_km": km,
+                "source": f"waze:{server}",
+                "debug_log": debug_log
+            })
+        except Exception as e:
+            debug_log.append(f"Waze failed: {e}")
+            # fallback ל־ORS
+            if ORS_API_KEY:
+                try:
+                    km = get_ors_distance(lat1, lon1, lat2, lon2)
+                    debug_log.append(f"ORS success: {km} km")
+                    return jsonify({
+                        "distance_km": km,
+                        "source": "ors",
+                        "debug_log": debug_log
+                    })
+                except Exception as ors_e:
+                    debug_log.append(f"ORS failed: {ors_e}")
+            return jsonify({"error": str(e), "debug_log": debug_log}), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
