@@ -1,2 +1,2 @@
 flask
-git+https://github.com/TeamDodo/pywaze.git
+git+https://github.com/eifinger/pywaze.git
