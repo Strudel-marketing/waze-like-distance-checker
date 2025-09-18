@@ -1,3 +1,2 @@
-flask==3.0.3
-requests==2.32.3
-https://github.com/kovacsbalu/WazeRouteCalculator/archive/refs/heads/master.zip
+Flask==2.3.3
+WazeRouteCalculator==0.13
