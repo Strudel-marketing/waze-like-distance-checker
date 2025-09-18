@@ -144,10 +144,7 @@ def waze_distance():
         lat2 = float(request.args["lat2"])
         lon2 = float(request.args["lon2"])
 
-        # אסטרטגיית בחירה:
-        # - min_distance (ברירת מחדל): המסלול הקצר ביותר בק"מ
-        # - fastest: המסלול המהיר ביותר בדקות
-        strategy = request.args.get("strategy", "min_distance").lower()
+        # תמיד בוחרים את המסלול הקצר ביותר בק"מ
         verbose = request.args.get("verbose", "0") in ("1", "true", "yes")
 
         # קאש
