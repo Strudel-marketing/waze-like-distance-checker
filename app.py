@@ -12,11 +12,17 @@ def waze_distance():
         lon2 = float(request.args.get("lon2"))
 
         route = WazeRouteCalculator(lat1, lon1, lat2, lon2, region="IL")
-        route_time, route_distance = route.calc_route_info()
+        routes = route.calc_all_routes_info()  # מחזיר dict של כל המסלולים
+
+        # בוחרים את הקצר ביותר בק"מ
+        shortest = min(routes.items(), key=lambda r: r[1][1])  # (שם מסלול, (דקות, ק"מ))
+        route_name, (time_minutes, distance_km) = shortest
 
         return jsonify({
-            "time_minutes": route_time,
-            "distance_km": route_distance
+            "route": route_name,
+            "time_minutes": time_minutes,
+            "distance_km": distance_km,
+            "source": "waze"
         })
 
     except WRCError as e:
