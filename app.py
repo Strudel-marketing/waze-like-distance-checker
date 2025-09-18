@@ -21,7 +21,9 @@ def waze_distance():
 
         async def get_distance():
             async with WazeRouteCalculator("IL") as client:
-                results = await client.calc_routes((lat1, lon1), (lat2, lon2))
+                start = f"{lat1},{lon1}"
+                end = f"{lat2},{lon2}"
+                results = await client.calc_routes(start, end)
                 route_time, route_dist = list(results.values())[0]
                 return route_dist
 
