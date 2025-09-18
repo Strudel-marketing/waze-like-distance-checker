@@ -6,14 +6,10 @@ app = Flask(__name__)
 
 # ORS settings
 ORS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
-ORS_API_KEY = "<ORS_API_KEY>"  # תכניס כאן את המפתח שלך
+ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjRlNmIyMmZiOGFiNTQ0NWI5YTk4MTQ2ZjY2NTlkNDE1IiwiaCI6Im11cm11cjY0In0="
 
 
 def try_waze(lat1, lon1, lat2, lon2, region=None):
-    """
-    מנסה להביא תוצאות מ-WazeRouteCalculator
-    מחזיר dict אם הצליח, אחרת זורק Exception
-    """
     calculator = WazeRouteCalculator(
         (lat1, lon1),
         (lat2, lon2),
@@ -47,9 +43,6 @@ def try_waze(lat1, lon1, lat2, lon2, region=None):
 
 
 def ors_fallback(lat1, lon1, lat2, lon2):
-    """
-    קריאה ל-ORS במקרה ש-Waze נכשל
-    """
     body = {
         "coordinates": [[lon1, lat1], [lon2, lat2]],
         "units": "km"
@@ -84,7 +77,7 @@ def waze_distance():
             except Exception as e:
                 print(f"Waze failed with region={region}: {e}")
 
-        # אם הכול נכשל → ORS
+        # fallback ל-ORS
         return jsonify(ors_fallback(lat1, lon1, lat2, lon2))
 
     except Exception as e:
