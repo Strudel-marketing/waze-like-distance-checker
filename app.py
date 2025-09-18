@@ -6,15 +6,21 @@ app = Flask(__name__)
 @app.route("/waze-distance", methods=["GET"])
 def waze_distance():
     try:
-        lat1 = float(request.args.get("lat1"))
-        lon1 = float(request.args.get("lon1"))
-        lat2 = float(request.args.get("lat2"))
-        lon2 = float(request.args.get("lon2"))
+        # קבלת פרמטרים מה-URL
+        lat1 = request.args.get("lat1")
+        lon1 = request.args.get("lon1")
+        lat2 = request.args.get("lat2")
+        lon2 = request.args.get("lon2")
 
-        route = WazeRouteCalculator(lat1, lon1, lat2, lon2, region="IL")
-        routes = route.calc_all_routes_info()  # מחזיר dict של כל המסלולים
+        # בניית origin ו-destination כטקסט
+        origin = f"{lat1},{lon1}"
+        destination = f"{lat2},{lon2}"
 
-        # בוחרים את הקצר ביותר בק"מ
+        # קריאה ל-WazeRouteCalculator
+        route = WazeRouteCalculator(origin, destination, "IL")
+        routes = route.calc_all_routes_info()  # מחזיר את כל המסלולים האפשריים
+
+        # בחירה במסלול הקצר ביותר בקילומטרים
         shortest = min(routes.items(), key=lambda r: r[1][1])  # (שם מסלול, (דקות, ק"מ))
         route_name, (time_minutes, distance_km) = shortest
 
@@ -28,7 +34,7 @@ def waze_distance():
     except WRCError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
-        return jsonify({"error": f"בעיה בפרמטרים: {e}"}), 400
+        return jsonify({"error": f"שגיאה: {e}"}), 400
 
 
 if __name__ == "__main__":
