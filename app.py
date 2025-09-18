@@ -33,8 +33,9 @@ def waze_distance():
         shortest = min(all_routes, key=lambda r: r["distance_km"])
 
         return jsonify({
-            "chosen": shortest,     # זה מה שתשתמש לתשלום לפי ק״מ
-            "all_routes": all_routes,
+            "distance_km": shortest["distance_km"],   # 👈 התאמה ל-Apps Script
+            "chosen": shortest,                       # 👈 המסלול הקצר ביותר
+            "all_routes": all_routes,                 # 👈 כל המסלולים להשוואה
             "source": "waze"
         })
 
