@@ -20,6 +20,8 @@ def waze_distance():
         destination = f"{lat2},{lon2}"
 
         route = WazeRouteCalculator(origin, destination, "IL")
+
+        # כאן נקבל את כל הנתונים מה-API
         routes = route.calc_all_routes_info()  # dict: { routeName: (time, distance) }
 
         all_routes = []
@@ -36,10 +38,8 @@ def waze_distance():
         shortest = min(all_routes, key=lambda r: r["distance_km"])
         fastest = min(all_routes, key=lambda r: r["time_minutes"])
 
-        # ברירת מחדל: shortest, אלא אם mode=fastest
         chosen = shortest if mode == "shortest" else fastest
 
-        # אינדיקציה לפער
         warning = None
         if abs(shortest["distance_km"] - fastest["distance_km"]) > 10:
             warning = "Large difference between shortest and fastest routes"
@@ -53,7 +53,8 @@ def waze_distance():
             "routes_count": len(all_routes),
             "warning": warning,
             "source": "waze",
-            "calculated_at": datetime.utcnow().isoformat() + "Z"
+            "calculated_at": datetime.utcnow().isoformat() + "Z",
+            "raw_response": routes  # 👈 החזרה גולמית מה-WazeRouteCalculator
         })
 
     except WRCError as e:
