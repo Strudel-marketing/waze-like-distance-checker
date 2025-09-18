@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from pywaze import WazeClient
+from pywaze.route_calculator import WazeRouteCalculator  # ✅ במקום WazeClient
 from cache import DistanceCache
 import asyncio
 
@@ -20,9 +20,9 @@ def waze_distance():
             return jsonify({"distance_km": cached, "source": "cache"})
 
         async def get_distance():
-            client = WazeClient(region="IL")
-            route = await client.get_route((lat1, lon1), (lat2, lon2))
-            return route.distance / 1000.0  # ק״מ
+            async with WazeRouteCalculator("IL") as client:  # ✅ שימוש ב־async context
+                route = await client.get_route((lat1, lon1), (lat2, lon2))
+                return route.distance / 1000.0  # ק״מ
 
         km = asyncio.run(get_distance())
         cache.set(lat1, lon1, lat2, lon2, km)
