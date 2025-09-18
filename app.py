@@ -6,35 +6,42 @@ app = Flask(__name__)
 @app.route("/waze-distance", methods=["GET"])
 def waze_distance():
     try:
-        # קבלת פרמטרים מה-URL
         lat1 = request.args.get("lat1")
         lon1 = request.args.get("lon1")
         lat2 = request.args.get("lat2")
         lon2 = request.args.get("lon2")
 
-        # בניית origin ו-destination כטקסט
+        if not lat1 or not lon1 or not lat2 or not lon2:
+            return jsonify({"error": "Missing coordinates"}), 400
+
         origin = f"{lat1},{lon1}"
         destination = f"{lat2},{lon2}"
 
-        # קריאה ל-WazeRouteCalculator
         route = WazeRouteCalculator(origin, destination, "IL")
-        routes = route.calc_all_routes_info()  # מחזיר את כל המסלולים האפשריים
+        routes = route.calc_all_routes_info()  # מחזיר dict: { routeName: (time, distance) }
 
-        # בחירה במסלול הקצר ביותר בקילומטרים
-        shortest = min(routes.items(), key=lambda r: r[1][1])  # (שם מסלול, (דקות, ק"מ))
-        route_name, (time_minutes, distance_km) = shortest
+        # הפיכת הפלט לרשימה ידידותית
+        all_routes = []
+        for name, (time_minutes, distance_km) in routes.items():
+            all_routes.append({
+                "route": name,
+                "time_minutes": time_minutes,
+                "distance_km": distance_km
+            })
+
+        # בחירת המסלול הקצר ביותר בק״מ
+        shortest = min(all_routes, key=lambda r: r["distance_km"])
 
         return jsonify({
-            "route": route_name,
-            "time_minutes": time_minutes,
-            "distance_km": distance_km,
+            "chosen": shortest,     # זה מה שתשתמש לתשלום לפי ק״מ
+            "all_routes": all_routes,
             "source": "waze"
         })
 
     except WRCError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
-        return jsonify({"error": f"שגיאה: {e}"}), 400
+        return jsonify({"error": f"שגיאה כללית: {e}"}), 500
 
 
 if __name__ == "__main__":
