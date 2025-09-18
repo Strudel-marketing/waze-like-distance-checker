@@ -24,9 +24,8 @@ def waze_distance():
                 start = f"{lat1},{lon1}"
                 end = f"{lat2},{lon2}"
                 results = await client.calc_routes(start, end)
-                first_route = results[0]
-                route_time, route_dist = first_route[1]
-                return route_dist
+                first_route = next(iter(results))
+                return first_route.distance
 
         km = asyncio.run(get_distance())
         cache.set(lat1, lon1, lat2, lon2, km)
