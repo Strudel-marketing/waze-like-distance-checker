@@ -20,9 +20,10 @@ def waze_distance():
             return jsonify({"distance_km": cached, "source": "cache"})
 
         async def get_distance():
-            async with WazeRouteCalculator("IL") as client:  # ✅ שימוש ב־async context
-                route = await client.get_route((lat1, lon1), (lat2, lon2))
-                return route.distance / 1000.0  # ק״מ
+            async with WazeRouteCalculator("IL") as client:
+                results = await client.calc_routes((lat1, lon1), (lat2, lon2))
+                route_time, route_dist = list(results.values())[0]
+                return route_dist
 
         km = asyncio.run(get_distance())
         cache.set(lat1, lon1, lat2, lon2, km)
